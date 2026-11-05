@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Record or Identify</title>
+<title>Identify Where It Counts</title>
 <meta name="description" content="Photos waiting for an ID in British Columbia's least recorded places, each a species not yet confirmed where it was seen. Identify them, or see where only a visit helps.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
@@ -70,9 +70,9 @@ a { color: var(--accent) }
 <div class="wrap">
 <aside id="side">
   <header>
-    <h1>Record or identify?</h1>
-    <p class="lede">Photos waiting for an ID in BC's least recorded places. Each one names a species not yet confirmed where it was seen. Click a place on the map to see only its photos.</p>
-    <div class="key"><span><i style="background:var(--idf)"></i>photos wait</span><span><i style="background:var(--rec)"></i>nothing waits: go and record</span></div>
+    <h1>Identify where it counts</h1>
+    <p class="lede">Each photo is the first record of its species in a little-studied part of BC. Confirm or correct the ID and it becomes data. Click a place on the map to see only its photos.</p>
+    <div class="key"><span><i style="background:var(--idf)"></i>photos to identify</span><span><i style="background:var(--rec)"></i>no photos yet, a visit is what helps</span></div>
   </header>
   <div id="map" aria-label="Map of BC's least recorded places"></div>
 </aside>
@@ -82,7 +82,7 @@ a { color: var(--accent) }
   <div id="feed" style="display:grid;gap:26px"></div>
   <button class="btn more" type="button" id="more" hidden>Show more places</button>
   <footer class="foot">
-    <p><b>Least recorded places</b>: BC's third of 25 km cells with the largest <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> Spatial Gap score. <b>Not yet confirmed here</b>: the species the record proposes has no research-grade record in its cell. Needs ID records, iNaturalist, BC place only.</p>
+    <p><b>Least recorded places</b>: BC's third of 25 km cells with the largest <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> Spatial Gap score. <b>First for this area</b>: the species the record proposes has no research-grade record in its cell. Needs ID records, iNaturalist, BC place only.</p>
     <p>A proposal is not a confirmed record and some are wrong: your ID is what confirms or corrects it. <span id="made"></span></p>
     <p>Joins <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> and <a href="https://pollocklab.github.io/what-to-id/">what-to-id</a>. Code: <a href="https://github.com/wietzesuijker/id">github.com/wietzesuijker/id</a>.</p>
   </footer>
@@ -149,7 +149,7 @@ async function waiting(c) {
 function tile(o) {
   const t = o.taxon || {}, url = o.photos[0].url.replace('square', 'small');
   return `<a class="tile" href="https://www.inaturalist.org/observations/${o.id}" target="_blank" rel="noopener">
-    <div class="ph"><img loading="lazy" src="${esc(url)}" alt="${esc(t.preferred_common_name || t.name || 'Needs ID record')}"><span class="new">New here</span></div>
+    <div class="ph"><img loading="lazy" src="${esc(url)}" alt="${esc(t.preferred_common_name || t.name || 'Needs ID record')}"><span class="new">First for this area</span></div>
     <div class="cap"><b>${esc(t.preferred_common_name || t.name || 'Unknown')}</b>${t.preferred_common_name ? `<i>${esc(t.name)}</i>` : ''}
       <small>${esc(o.observed_on || '')}${o.identifications_count ? ` · ${o.identifications_count} ID${o.identifications_count > 1 ? 's' : ''}` : ''}</small></div></a>`;
 }
@@ -158,7 +158,7 @@ async function group(c) {
   const el = document.createElement('section');
   el.className = 'group';
   el.dataset.key = c.key;
-  el.innerHTML = `<div class="ghead"><h2>${where(c)}</h2><small><b class="num" style="color:var(--idf)">+${fmt(c.latent_species)}</b> species waiting · less recorded than ${c.bc}% of BC</small></div>
+  el.innerHTML = `<div class="ghead"><h2>${where(c)}</h2><small title="Less recorded than ${c.bc}% of BC"><b class="num" style="color:var(--idf)">${fmt(c.latent_species)}</b> species here are known only from unconfirmed photos</small></div>
     <div class="grid">${'<div class="tile"><div class="ph"></div><div class="cap"><small>Loading…</small></div></div>'.repeat(4)}</div>`;
   document.getElementById('feed').append(el);
   placeName(c).then(n => { el.querySelector('h2').textContent = n; });

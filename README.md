@@ -1,4 +1,4 @@
-# Record or identify?
+# Identify where it counts
 
 Where we know little about a place's species, is the gap out in the field, or already photographed and waiting in the iNaturalist identification queue? This page answers that for each 25 km cell of British Columbia.
 
