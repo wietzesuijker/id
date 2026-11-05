@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Record or Identify</title>
+<meta name="description" content="Each 25 km cell of British Columbia: is the gap in what we know there a recording gap, or an identification gap already waiting in the iNaturalist queue?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
+<style>
+/* Layout: map fills the screen; one panel on the left (bottom sheet on phones) holds the claim, the legend and the selected cell. */
+:root {
+  --bg: #f6f7f4; --panel: #ffffff; --fg: #1d2420; --muted: #5c6862; --line: #d9ded9; --accent: #2f6f62;
+  --rec: #c85a5a; --idf: #64acbe;
+  --display: "Young Serif", Georgia, serif;
+  --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121614; --panel: #1a201d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530; --accent: #7cc4b2; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #121614; --panel: #1a201d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530; --accent: #7cc4b2; color-scheme: dark }
+html, body { height: 100%; margin: 0 }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); display: flex }
+#panel { width: 400px; max-width: 100%; box-sizing: border-box; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
+  padding-block: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: 20px; display: flex; flex-direction: column; gap: 18px }
+#map { flex: 1; min-width: 0 }
+h1 { font: 400 28px/1.15 var(--display); margin: 0; text-wrap: balance }
+h2 { font: 600 12px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px }
+p { margin: 0 }
+.lede { color: var(--muted) }
+a { color: var(--accent) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.claim { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 6px }
+.claim strong { font: 400 22px/1.2 var(--display) }
+.modes { display: flex; gap: 6px; flex-wrap: wrap }
+.modes button, .btn { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 6px; padding: 6px 10px; cursor: pointer }
+.modes button[aria-pressed="true"] { background: var(--fg); color: var(--panel); border-color: var(--fg) }
+.legend { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center }
+.bivar { display: grid; grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); transform: rotate(0deg) }
+.bivar span { display: block }
+.legend .axes { font-size: 13px; color: var(--muted); display: grid; gap: 4px }
+.ramp { height: 12px; border-radius: 3px }
+.top { display: grid; gap: 4px }
+.top button { all: unset; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 14px }
+.top button:hover, .top button:focus-visible { background: var(--bg) }
+#cell { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.stats div { display: grid }
+.stats b { font: 600 20px var(--mono) }
+.stats small { color: var(--muted); font-size: 12px }
+.actions { display: flex; flex-wrap: wrap; gap: 6px }
+.btn.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); text-decoration: none }
+a.btn { text-decoration: none }
+#latent { display: grid; gap: 2px; font-size: 14px; max-height: 260px; overflow-y: auto }
+#latent div { display: grid; grid-template-columns: 1fr auto; gap: 8px }
+#latent i { color: var(--muted) }
+.foot { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px }
+@media (max-width: 760px) {
+  body { flex-direction: column-reverse }
+  #map { flex: 0 0 52vh }
+  #panel { width: 100%; border-right: 0; border-top: 1px solid var(--line); flex: 1;
+    padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)) }
+}
+</style>
+</head>
+<body>
+<aside id="panel">
+  <header style="display:grid;gap:8px">
+    <h1>Record or identify?</h1>
+    <p class="lede">Where we know little about British Columbia's species, is the gap out in the field, or already sitting in the iNaturalist queue? Each 25 km cell compares the two.</p>
+  </header>
+  <section class="claim" id="claim" aria-live="polite"><p class="lede">Loading cells…</p></section>
+  <section>
+    <h2>Colour by</h2>
+    <div class="modes" role="group" aria-label="Colour the map by">
+      <button type="button" id="m-verdict" data-mode="verdict" aria-pressed="true">Both gaps</button>
+      <button type="button" id="m-record" data-mode="record" aria-pressed="false">Recording gap</button>
+      <button type="button" id="m-identify" data-mode="identify" aria-pressed="false">Identification gap</button>
+    </div>
+  </section>
+  <section class="legend" id="legend" aria-label="Legend"></section>
+  <section>
+    <h2>Identify first: big recording gaps, species already proposed</h2>
+    <div class="top" id="top"></div>
+  </section>
+  <section id="cell" hidden></section>
+  <footer class="foot">
+    <p><b>Recording gap</b>: <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> Spatial Gap score, as a percentile across Canada. <b>Identification gap</b>: species proposed at species level only in Needs ID records, with no research-grade record in the cell, as a share of all species known there. iNaturalist, BC place only.</p>
+    <p>A latent species is a proposal, not a confirmed record. Some proposals are wrong; the share is an upper bound on what identifying would add. <span id="made"></span></p>
+    <p>Companion to <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> (where to record) and <a href="https://pollocklab.github.io/what-to-id/">what-to-id</a> (what to identify). Code: <a href="https://github.com/wietzesuijker/id">github.com/wietzesuijker/id</a>.</p>
+  </footer>
+</aside>
+<main id="map" aria-label="Map of British Columbia cells"></main>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+<script src="gaps.js"></script>
+<script>
+const WTB = 'https://pollocklab.github.io/where-to-blitz/';
+const API = 'https://api.inaturalist.org/v1/';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => n.toLocaleString('en-CA');
+let DATA, mode = 'verdict', map, selected = null;
+
+function legend() {
+  const el = document.getElementById('legend');
+  if (mode === 'verdict') {
+    const sw = [2, 1, 0].flatMap(y => [0, 1, 2].map(x => `<span style="background:${Gaps.BIVAR[y * 3 + x]}"></span>`)).join('');
+    el.innerHTML = `<div class="bivar" aria-hidden="true">${sw}</div><div class="axes">
+      <span>↑ <b style="color:var(--fg)">Identification gap</b>: share of species seen only in Needs ID</span>
+      <span>→ <b style="color:var(--fg)">Recording gap</b>: where-to-blitz percentile</span>
+      <span>Dark top right: both. Grey cells: no records yet.</span></div>`;
+  } else {
+    const ramp = mode === 'record' ? Gaps.RAMP_REC : Gaps.RAMP_IDF;
+    el.innerHTML = `<div style="grid-column:1/-1;display:grid;gap:4px"><div class="ramp" style="background:linear-gradient(90deg,${ramp.join(',')})"></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>${mode === 'record' ? 'well recorded' : 'none waiting'}</span><span>${mode === 'record' ? 'largest gap' : 'most waiting'}</span></div></div>`;
+  }
+}
+
+function colour() {
+  if (!map.getSource('cells')) return;
+  map.getSource('cells').setData(Gaps.geojson(DATA.cells, mode, DATA.cuts));
+  legend();
+}
+
+function claim() {
+  const s = Gaps.summary(DATA.cells, DATA.cuts);
+  document.getElementById('claim').innerHTML = `
+    <strong><span class="num">${s.topWithLatentPct}%</span> of the cells with BC's largest recording gaps already hold species proposed only in the Needs ID queue.</strong>
+    <p class="lede">In the median such cell, identifying those records would add <b class="num">${s.medianGainPct}%</b> to the species with a research-grade record. Over all <span class="num">${fmt(s.n)}</span> cells, <span class="num">${fmt(s.latentObs)}</span> Needs ID records name a species not yet confirmed in their cell.</p>`;
+  document.getElementById('made').textContent = `Data from ${DATA.made}.`;
+  document.getElementById('top').innerHTML = Gaps.identifyFirst(DATA.cells, DATA.cuts, 8).map(c =>
+    `<button type="button" data-key="${c.key}"><span>${c.lat.toFixed(2)}°N ${(-c.lon).toFixed(2)}°W · gap <span class="num">${Math.round(c.gap_pct)}</span></span><span class="num">+${fmt(c.latent_species)} spp.</span></button>`).join('');
+}
+
+function bbox(c) {
+  const lons = c.poly.map(p => p[0]), lats = c.poly.map(p => p[1]);
+  return {swlat: Math.min(...lats), swlng: Math.min(...lons), nelat: Math.max(...lats), nelng: Math.max(...lons)};
+}
+
+async function jget(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`iNaturalist answered ${r.status}`);
+  return r.json();
+}
+
+async function select(c) {
+  selected = c;
+  const el = document.getElementById('cell');
+  el.hidden = false;
+  const b = bbox(c), q = new URLSearchParams({...b, place_id: 7085});
+  const plan = `${WTB}?at=${c.lat.toFixed(3)},${c.lon.toFixed(3)}&res=25000&g=All%20biodiversity&goal=0`;
+  el.innerHTML = `<h2>Cell at ${c.lat.toFixed(2)}°N ${(-c.lon).toFixed(2)}°W</h2>
+    <div class="stats">
+      <div><b>${Math.round(c.gap_pct)}</b><small>recording gap percentile</small></div>
+      <div><b>${fmt(c.rg_species)}</b><small>species confirmed</small></div>
+      <div><b>+${fmt(c.latent_species)}</b><small>species only proposed (${fmt(c.latent_obs)} records)</small></div>
+    </div>
+    <p>${Gaps.verdict(c, DATA.cuts)}</p>
+    <div class="actions" id="acts"><a class="btn" href="${plan}" target="_blank" rel="noopener">Plan a trip here</a></div>
+    <div id="latent"><i>Loading the proposed species…</i></div>`;
+  try {
+    const ni = await jget(`${API}observations/species_counts?${q}&verifiable=true&quality_grade=needs_id&hrank=species&lrank=species&per_page=200`);
+    const ids = ni.results.map(r => r.taxon.id);
+    let confirmed = new Set();
+    if (ids.length) {
+      const rg = await jget(`${API}observations/species_counts?${q}&verifiable=true&quality_grade=research&taxon_id=${ids.join(',')}&hrank=species&lrank=species&per_page=200`);
+      confirmed = new Set(rg.results.map(r => r.taxon.id));
+    }
+    if (selected !== c) return;
+    const latent = ni.results.filter(r => !confirmed.has(r.taxon.id));
+    const ident = `https://www.inaturalist.org/observations/identify?${new URLSearchParams({quality_grade: 'needs_id', reviewed: 'false', ...b, place_id: 7085, taxon_ids: latent.slice(0, 100).map(r => r.taxon.id).join(',')})}`;
+    if (latent.length) document.getElementById('acts').insertAdjacentHTML('afterbegin',
+      `<a class="btn primary" href="${esc(ident)}" target="_blank" rel="noopener">Identify these on iNaturalist</a>`);
+    document.getElementById('latent').innerHTML = latent.length
+      ? `<h2>Proposed, not yet confirmed here</h2>` + latent.map(r =>
+        `<div><span><i>${esc(r.taxon.name)}</i>${r.taxon.preferred_common_name ? ' · ' + esc(r.taxon.preferred_common_name) : ''}</span><span class="num">${r.count}</span></div>`).join('')
+      : '<i>No proposed species without a research-grade record here.</i>';
+  } catch (e) {
+    if (selected === c) document.getElementById('latent').innerHTML = `<i>Could not load species from iNaturalist (${esc(e.message)}). Try again in a minute.</i>`;
+  }
+  if (map.getSource('sel')) map.getSource('sel').setData({type: 'Feature', geometry: {type: 'Polygon', coordinates: [[...c.poly, c.poly[0]]]}});
+}
+
+async function boot() {
+  const r = await fetch('data/cells.json');
+  if (!r.ok) { document.getElementById('claim').innerHTML = '<p>Could not load data/cells.json.</p>'; return; }
+  DATA = await r.json();
+  DATA.cuts = Gaps.cuts(DATA.cells);
+  claim(); legend();
+  map = new maplibregl.Map({container: 'map', bounds: [[-139.1, 48.2], [-114, 60.1]], fitBoundsOptions: {padding: 20},
+    style: {version: 8, sources: {osm: {type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · cells: where-to-blitz · records: iNaturalist'}},
+      layers: [{id: 'osm', type: 'raster', source: 'osm', paint: {'raster-saturation': -0.8, 'raster-opacity': 0.9}}]}});
+  map.addControl(new maplibregl.NavigationControl({showCompass: false}));
+  map.on('load', () => {
+    map.addSource('cells', {type: 'geojson', data: Gaps.geojson(DATA.cells, mode, DATA.cuts)});
+    map.addLayer({id: 'cells', type: 'fill', source: 'cells', paint: {'fill-color': ['get', 'colour'], 'fill-opacity': 0.82}});
+    map.addSource('sel', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
+    map.addLayer({id: 'sel', type: 'line', source: 'sel', paint: {'line-color': '#111', 'line-width': 2.5}});
+    map.on('click', 'cells', e => select(DATA.cells[e.features[0].properties.i]));
+    map.on('mouseenter', 'cells', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'cells', () => map.getCanvas().style.cursor = '');
+  });
+  document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll('.modes button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    colour();
+  }));
+  document.getElementById('top').addEventListener('click', e => {
+    const b = e.target.closest('button[data-key]');
+    if (!b) return;
+    const c = DATA.cells.find(x => x.key === b.dataset.key);
+    map.flyTo({center: [c.lon, c.lat], zoom: 8});
+    select(c);
+  });
+}
+boot();
+</script>
+</body>
+</html>
