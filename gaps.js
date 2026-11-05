@@ -69,8 +69,36 @@
 
   // Cells in the top recording-gap third, most proposed-only species first.
   function identifyFirst(cells, k, n) {
-    return cells.filter(c => tier(c.gap_pct, k.rec) === 2 && c.latent_species > 0)
+    return cells.filter(c => job(c, k) === 'identify')
       .sort((a, b) => b.latent_species - a.latent_species).slice(0, n);
+  }
+
+  // Cells in the top recording-gap third where little or nothing waits for an ID: only a visit helps, largest gap first.
+  function recordFirst(cells, k, n) {
+    return cells.filter(c => tier(c.gap_pct, k.rec) === 2 && (share(c) === null || tier(share(c), k.idf) === 0))
+      .sort((a, b) => b.gap_pct - a.gap_pct).slice(0, n);
+  }
+
+  // Two jobs for the map: 'identify' (top recording-gap third, species waiting), 'record' (recordFirst), else null.
+  function job(c, k) {
+    if (tier(c.gap_pct, k.rec) !== 2) return null;
+    if (c.latent_species > 0 && tier(share(c), k.idf) > 0) return 'identify';
+    return share(c) === null || tier(share(c), k.idf) === 0 ? 'record' : null;
+  }
+
+  // what-to-id's area= hash value for one ring: zigzag varint steps on a 0.0001 degree grid, base64url (its map_area.js encode).
+  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function area(poly) {
+    let s = '';
+    const prev = [0, 0];
+    poly.flat().forEach((x, i) => {
+      const v = Math.round(x * 1e4), d = v - prev[i % 2];
+      prev[i % 2] = v;
+      let z = d < 0 ? -2 * d - 1 : 2 * d;
+      while (z >= 32) { s += B64[32 | z % 32]; z = Math.floor(z / 32); }
+      s += B64[z];
+    });
+    return s;
   }
 
   function verdict(c, k) {
@@ -85,5 +113,5 @@
     return 'Well recorded compared with the rest of BC.';
   }
 
-  return {BIVAR, NONE, RAMP_REC, RAMP_IDF, share, cuts, cls, colour, geojson, summary, identifyFirst, verdict};
+  return {BIVAR, NONE, RAMP_REC, RAMP_IDF, share, cuts, cls, colour, geojson, summary, identifyFirst, recordFirst, job, area, verdict};
 });

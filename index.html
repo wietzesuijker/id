@@ -4,216 +4,246 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Record or Identify</title>
-<meta name="description" content="Each 25 km cell of British Columbia: is the gap in what we know there a recording gap, or an identification gap already waiting in the iNaturalist queue?">
+<meta name="description" content="Places in British Columbia that look unrecorded but already hold photos of species waiting for an ID, and places only a visit can fill. Each opens straight in what-to-id or where-to-blitz.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <style>
-/* Layout: map fills the screen; one panel on the left (bottom sheet on phones) holds the claim, the legend and the selected cell. */
+/* Layout: a list of places is the page; the map beside it (below it on phones) only locates them. */
 :root {
   --bg: #f6f7f4; --panel: #ffffff; --fg: #1d2420; --muted: #5c6862; --line: #d9ded9; --accent: #2f6f62;
-  --rec: #c85a5a; --idf: #64acbe;
+  --idf: #1f7f95; --idf-soft: #e3f1f4; --rec: #b44a4a; --rec-soft: #f6e5e5; --chip: #eef1ee;
   --display: "Young Serif", Georgia, serif;
   --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #121614; --panel: #1a201d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530; --accent: #7cc4b2; color-scheme: dark } }
-:root[data-theme="dark"] { --bg: #121614; --panel: #1a201d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530; --accent: #7cc4b2; color-scheme: dark }
+  --bg: #121614; --panel: #1a201d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530; --accent: #7cc4b2;
+  --idf: #6cc3d6; --idf-soft: #18313a; --rec: #e48a8a; --rec-soft: #3a2224; --chip: #232a26; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #121614; --panel: #1a201d; --fg: #e6ebe7; --muted: #9aa69f; --line: #2c3530; --accent: #7cc4b2;
+  --idf: #6cc3d6; --idf-soft: #18313a; --rec: #e48a8a; --rec-soft: #3a2224; --chip: #232a26; color-scheme: dark }
 html, body { height: 100%; margin: 0 }
 body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); display: flex }
-#panel { width: 400px; max-width: 100%; box-sizing: border-box; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
-  padding-block: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-bottom, 0px));
-  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: 20px; display: flex; flex-direction: column; gap: 18px }
+#panel { width: 560px; max-width: 100%; box-sizing: border-box; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line);
+  padding-block: max(22px, env(safe-area-inset-top, 0px)) max(22px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(22px, env(safe-area-inset-left, 0px)); padding-right: 22px; display: flex; flex-direction: column; gap: 18px }
 #map { flex: 1; min-width: 0 }
-h1 { font: 400 28px/1.15 var(--display); margin: 0; text-wrap: balance }
-h2 { font: 600 12px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px }
+h1 { font: 400 30px/1.1 var(--display); margin: 0; text-wrap: balance }
+h3 { font: 600 17px/1.25 var(--body); margin: 0 }
 p { margin: 0 }
-.lede { color: var(--muted) }
 a { color: var(--accent) }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums }
-.claim { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 6px }
-.claim strong { font: 400 22px/1.2 var(--display) }
-.modes { display: flex; gap: 6px; flex-wrap: wrap }
-.modes button, .btn { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 6px; padding: 6px 10px; cursor: pointer }
-.modes button[aria-pressed="true"] { background: var(--fg); color: var(--panel); border-color: var(--fg) }
-.legend { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center }
-.bivar { display: grid; grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); transform: rotate(0deg) }
-.bivar span { display: block }
-.legend .axes { font-size: 13px; color: var(--muted); display: grid; gap: 4px }
-.ramp { height: 12px; border-radius: 3px }
-.top { display: grid; gap: 4px }
-.top button { all: unset; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 14px }
-.top button:hover, .top button:focus-visible { background: var(--bg) }
-#cell { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
-.stats div { display: grid }
-.stats b { font: 600 20px var(--mono) }
-.stats small { color: var(--muted); font-size: 12px }
-.actions { display: flex; flex-wrap: wrap; gap: 6px }
-.btn.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); text-decoration: none }
-a.btn { text-decoration: none }
-#latent { display: grid; gap: 2px; font-size: 14px; max-height: 260px; overflow-y: auto }
-#latent div { display: grid; grid-template-columns: 1fr auto; gap: 8px }
-#latent i { color: var(--muted) }
+.lede { color: var(--muted); max-width: 62ch }
+.claim { font: 400 20px/1.3 var(--display); text-wrap: balance }
+.claim .i { color: var(--idf) } .claim .r { color: var(--rec) }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; position: sticky; top: calc(-1 * max(22px, env(safe-area-inset-top, 0px))); background: var(--panel); padding-block: 6px; z-index: 2 }
+.tabs button { font: 600 14px/1.25 var(--body); text-align: left; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 8px; padding: 9px 12px; cursor: pointer; display: grid; gap: 2px }
+.tabs button small { font-weight: 400; color: var(--muted); font-size: 12px }
+.tabs button[aria-selected="true"][data-job="identify"] { background: var(--idf-soft); border-color: var(--idf) }
+.tabs button[aria-selected="true"][data-job="record"] { background: var(--rec-soft); border-color: var(--rec) }
+.list { display: grid; gap: 12px }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; border-left: 4px solid var(--line) }
+.card[data-job="identify"] { border-left-color: var(--idf) }
+.card[data-job="record"] { border-left-color: var(--rec) }
+.card.on { box-shadow: 0 0 0 2px var(--accent) }
+.head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.head small { color: var(--muted); font-size: 12px }
+.big { font-size: 15px } .big b { font: 600 24px var(--mono); margin-right: 4px }
+.card[data-job="identify"] .big b { color: var(--idf) } .card[data-job="record"] .big b { color: var(--rec) }
+.sub { color: var(--muted); font-size: 13px }
+.photos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; min-height: 40px }
+.photos a, .photos span { aspect-ratio: 1; max-width: 100%; border-radius: 5px; background: var(--chip); overflow: hidden; display: block }
+.photos img { width: 100%; height: 100%; object-fit: cover; display: block }
+.acts { display: flex; flex-wrap: wrap; gap: 6px }
+.btn { font: 600 13px var(--body); border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; padding: 7px 11px; cursor: pointer; text-decoration: none }
+.btn.primary { color: #fff; border-color: transparent }
+.card[data-job="identify"] .btn.primary { background: var(--idf) } .card[data-job="record"] .btn.primary { background: var(--rec) }
+.card[data-job="other"] .btn.primary { background: var(--accent) }
+:root[data-theme="dark"] .btn.primary { color: #111 }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #111 } }
+#picked:empty { display: none }
 .foot { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px }
-@media (max-width: 760px) {
-  body { flex-direction: column-reverse }
-  #map { flex: 0 0 52vh }
-  #panel { width: 100%; border-right: 0; border-top: 1px solid var(--line); flex: 1;
+.key { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap }
+.key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px }
+@media (max-width: 860px) {
+  body { flex-direction: column; height: auto }
+  html { height: auto }
+  #panel { width: 100%; border-right: 0; overflow: visible;
     padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)) }
+  #map { flex: 0 0 60vh; order: 2 }
+  .tabs { top: 0 }
 }
 </style>
 </head>
 <body>
 <aside id="panel">
-  <header style="display:grid;gap:8px">
+  <header style="display:grid;gap:10px">
     <h1>Record or identify?</h1>
-    <p class="lede">Where we know little about British Columbia's species, is the gap out in the field, or already sitting in the iNaturalist queue? Each 25 km cell compares the two.</p>
+    <p class="lede">Some places in British Columbia look unrecorded on a gap map, but people already photographed species there. The photos wait for a second ID. Identify them from your desk, and save the trip for places where nothing waits.</p>
   </header>
-  <section class="claim" id="claim" aria-live="polite"><p class="lede">Loading cells…</p></section>
-  <section>
-    <h2>Colour by</h2>
-    <div class="modes" role="group" aria-label="Colour the map by">
-      <button type="button" id="m-verdict" data-mode="verdict" aria-pressed="true">Both gaps</button>
-      <button type="button" id="m-record" data-mode="record" aria-pressed="false">Recording gap</button>
-      <button type="button" id="m-identify" data-mode="identify" aria-pressed="false">Identification gap</button>
-    </div>
-  </section>
-  <section class="legend" id="legend" aria-label="Legend"></section>
-  <section>
-    <h2>Identify first: big recording gaps, species already proposed</h2>
-    <div class="top" id="top"></div>
-  </section>
-  <section id="cell" hidden></section>
+  <p class="claim" id="claim" aria-live="polite">Loading places…</p>
+  <div class="tabs" role="tablist" aria-label="Which job">
+    <button type="button" role="tab" data-job="identify" aria-selected="true" id="t-identify"><span>Identify from your desk</span><small id="n-identify"></small></button>
+    <button type="button" role="tab" data-job="record" aria-selected="false" id="t-record"><span>Go and record</span><small id="n-record"></small></button>
+  </div>
+  <div id="picked"></div>
+  <div class="list" id="list" role="tabpanel"></div>
   <footer class="foot">
-    <p><b>Recording gap</b>: <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> Spatial Gap score, as a percentile across Canada. <b>Identification gap</b>: species proposed at species level only in Needs ID records, with no research-grade record in the cell, as a share of all species known there. iNaturalist, BC place only.</p>
-    <p>A latent species is a proposal, not a confirmed record. Some proposals are wrong; the share is an upper bound on what identifying would add. <span id="made"></span></p>
-    <p>Companion to <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> (where to record) and <a href="https://pollocklab.github.io/what-to-id/">what-to-id</a> (what to identify). Code: <a href="https://github.com/wietzesuijker/id">github.com/wietzesuijker/id</a>.</p>
+    <div class="key"><span><i style="background:var(--idf)"></i>photos wait for an ID</span><span><i style="background:var(--rec)"></i>only a visit helps</span><span>Places: BC's third of 25 km cells with the largest recording gap.</span></div>
+    <p><b>Recording gap</b>: the <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> Spatial Gap score, as a percentile across Canada. <b>Species waiting</b>: species named at species level in Needs ID records in the cell, with no research-grade record of that species in the cell. iNaturalist, BC place only.</p>
+    <p>A waiting species is a proposal, not a confirmed record, and some proposals are wrong: the count is an upper bound on what identifying adds. <span id="made"></span></p>
+    <p>Joins <a href="https://pollocklab.github.io/where-to-blitz/">where-to-blitz</a> (where to record) and <a href="https://pollocklab.github.io/what-to-id/">what-to-id</a> (what to identify). Code: <a href="https://github.com/wietzesuijker/id">github.com/wietzesuijker/id</a>.</p>
   </footer>
 </aside>
-<main id="map" aria-label="Map of British Columbia cells"></main>
+<main id="map" aria-label="Map of the listed places"></main>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
 <script src="gaps.js"></script>
 <script>
 const WTB = 'https://pollocklab.github.io/where-to-blitz/';
+const WTI = 'https://pollocklab.github.io/what-to-id/identify.html';
 const API = 'https://api.inaturalist.org/v1/';
+const N = 15;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => n.toLocaleString('en-CA');
-let DATA, mode = 'verdict', map, selected = null;
-
-function legend() {
-  const el = document.getElementById('legend');
-  if (mode === 'verdict') {
-    const sw = [2, 1, 0].flatMap(y => [0, 1, 2].map(x => `<span style="background:${Gaps.BIVAR[y * 3 + x]}"></span>`)).join('');
-    el.innerHTML = `<div class="bivar" aria-hidden="true">${sw}</div><div class="axes">
-      <span>↑ <b style="color:var(--fg)">Identification gap</b>: share of species seen only in Needs ID</span>
-      <span>→ <b style="color:var(--fg)">Recording gap</b>: where-to-blitz percentile</span>
-      <span>Dark top right: both. Grey cells: no records yet.</span></div>`;
-  } else {
-    const ramp = mode === 'record' ? Gaps.RAMP_REC : Gaps.RAMP_IDF;
-    el.innerHTML = `<div style="grid-column:1/-1;display:grid;gap:4px"><div class="ramp" style="background:linear-gradient(90deg,${ramp.join(',')})"></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted)"><span>${mode === 'record' ? 'well recorded' : 'none waiting'}</span><span>${mode === 'record' ? 'largest gap' : 'most waiting'}</span></div></div>`;
-  }
-}
-
-function colour() {
-  if (!map.getSource('cells')) return;
-  map.getSource('cells').setData(Gaps.geojson(DATA.cells, mode, DATA.cuts));
-  legend();
-}
-
-function claim() {
-  const s = Gaps.summary(DATA.cells, DATA.cuts);
-  document.getElementById('claim').innerHTML = `
-    <strong>In BC's largest recording gaps, identifying the records already waiting would add <span class="num">${s.topGainPct}%</span> more species to the cells than are confirmed there now.</strong>
-    <p class="lede">That is the top third of the <span class="num">${fmt(s.n)}</span> cells by recording gap. <span class="num">${s.topWithLatentPct}%</span> of them hold at least one species proposed only in Needs ID; in the median one with any confirmed species, the gain is <b class="num">${s.medianGainPct}%</b>. Across BC, <span class="num">${fmt(s.latentObs)}</span> Needs ID records name a species not yet confirmed in their cell.</p>`;
-  document.getElementById('made').textContent = `Data from ${DATA.made}.`;
-  document.getElementById('top').innerHTML = Gaps.identifyFirst(DATA.cells, DATA.cuts, 8).map(c =>
-    `<button type="button" data-key="${c.key}"><span>${c.lat.toFixed(2)}°N ${(-c.lon).toFixed(2)}°W · gap <span class="num">${Math.round(c.gap_pct)}</span></span><span class="num">+${fmt(c.latent_species)} spp.</span></button>`).join('');
-}
+let DATA, map, tab = 'identify';
 
 function bbox(c) {
   const lons = c.poly.map(p => p[0]), lats = c.poly.map(p => p[1]);
   return {swlat: Math.min(...lats), swlng: Math.min(...lons), nelat: Math.max(...lats), nelng: Math.max(...lons)};
 }
 
-async function jget(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`iNaturalist answered ${r.status}`);
-  return r.json();
+// iNaturalist asks for about one request a second; cards queue their lookups here.
+const queue = [];
+let busy = false;
+function jget(url) {
+  return new Promise((ok, fail) => { queue.push({url, ok, fail}); pump(); });
+}
+async function pump() {
+  if (busy || !queue.length) return;
+  busy = true;
+  const {url, ok, fail} = queue.shift();
+  try { const r = await fetch(url); r.ok ? ok(await r.json()) : fail(new Error(`iNaturalist answered ${r.status}`)); } catch (e) { fail(e); }
+  setTimeout(() => { busy = false; pump(); }, 1000);
 }
 
-async function select(c) {
-  selected = c;
-  const el = document.getElementById('cell');
-  el.hidden = false;
-  const b = bbox(c), q = new URLSearchParams({...b, place_id: 7085});
-  const plan = `${WTB}?at=${c.lat.toFixed(3)},${c.lon.toFixed(3)}&res=25000&g=All%20biodiversity&goal=0`;
-  el.innerHTML = `<h2>Cell at ${c.lat.toFixed(2)}°N ${(-c.lon).toFixed(2)}°W</h2>
-    <div class="stats">
-      <div><b>${Math.round(c.gap_pct)}</b><small>recording gap percentile</small></div>
-      <div><b>${fmt(c.rg_species)}</b><small>species confirmed</small></div>
-      <div><b>+${fmt(c.latent_species)}</b><small>species only proposed (${fmt(c.latent_obs)} records)</small></div>
-    </div>
-    <p>${Gaps.verdict(c, DATA.cuts)}</p>
-    <div class="actions" id="acts"><a class="btn" href="${plan}" target="_blank" rel="noopener">Plan a trip here</a></div>
-    <div id="latent"><i>Loading the proposed species…</i></div>`;
+const where = c => `${c.lat.toFixed(2)}°N ${(-c.lon).toFixed(2)}°W`;
+const wti = c => `${WTI}#area=${Gaps.area(c.poly)}`;
+const wtb = c => `${WTB}?at=${c.lat.toFixed(3)},${c.lon.toFixed(3)}&res=25000&g=All%20biodiversity&goal=0`;
+const inat = c => `https://www.inaturalist.org/observations/identify?${new URLSearchParams({quality_grade: 'needs_id', reviewed: 'false', ...bbox(c), place_id: 7085})}`;
+
+function card(c) {
+  const job = Gaps.job(c, DATA.cuts) || 'other';
+  const body = {
+    identify: `<p class="big"><b>+${fmt(c.latent_species)}</b>species in photos, not yet confirmed here</p>
+      <p class="sub">${fmt(c.latent_obs)} photos wait for an ID · ${fmt(c.rg_species)} species confirmed · less recorded than ${c.bc}% of BC</p>
+      <div class="photos" data-photos>${'<span></span>'.repeat(6)}</div>
+      <div class="acts"><a class="btn primary" href="${wti(c)}" target="_blank" rel="noopener">Identify in what-to-id</a>
+        <a class="btn" href="${esc(inat(c))}" target="_blank" rel="noopener">iNaturalist Identify</a><button class="btn" type="button" data-fly>Show on map</button></div>`,
+    record: `<p class="big"><b>${c.bc}%</b>of BC is better recorded than this place</p>
+      <p class="sub">${c.rg_species ? `${fmt(c.rg_species)} species confirmed` : 'No species confirmed'} · ${c.latent_species ? `only ${fmt(c.latent_species)} waiting for an ID` : 'nothing waits for an ID'}. Only a visit adds species here.</p>
+      <div class="acts"><a class="btn primary" href="${wtb(c)}" target="_blank" rel="noopener">Plan a trip in where-to-blitz</a><button class="btn" type="button" data-fly>Show on map</button></div>`,
+    other: `<p class="sub">Less recorded than ${c.bc}% of BC · ${fmt(c.rg_species)} species confirmed · ${fmt(c.latent_species)} waiting for an ID. Neither job stands out here compared with the rest of BC.</p>
+      <div class="acts"><a class="btn primary" href="${wti(c)}" target="_blank" rel="noopener">Identify in what-to-id</a><a class="btn" href="${wtb(c)}" target="_blank" rel="noopener">Plan a trip</a></div>`,
+  }[job];
+  return `<article class="card" data-job="${job}" data-key="${c.key}"><div class="head"><h3 data-name>${where(c)}</h3><small class="num">${where(c)}</small></div>${body}</article>`;
+}
+
+// Fill a card with a place name and, for identify cards, photos that wait for an ID.
+async function fill(el, c) {
+  if (el.dataset.filled) return;
+  el.dataset.filled = '1';
+  const b = new URLSearchParams(bbox(c));
   try {
-    const ni = await jget(`${API}observations/species_counts?${q}&verifiable=true&quality_grade=needs_id&hrank=species&lrank=species&per_page=200`);
-    const ids = ni.results.map(r => r.taxon.id);
-    let confirmed = new Set();
-    if (ids.length) {
-      const rg = await jget(`${API}observations/species_counts?${q}&verifiable=true&quality_grade=research&taxon_id=${ids.join(',')}&hrank=species&lrank=species&per_page=200`);
-      confirmed = new Set(rg.results.map(r => r.taxon.id));
-    }
-    if (selected !== c) return;
-    const latent = ni.results.filter(r => !confirmed.has(r.taxon.id));
-    const ident = `https://www.inaturalist.org/observations/identify?${new URLSearchParams({quality_grade: 'needs_id', reviewed: 'false', ...b, place_id: 7085, taxon_ids: latent.slice(0, 100).map(r => r.taxon.id).join(',')})}`;
-    if (latent.length) document.getElementById('acts').insertAdjacentHTML('afterbegin',
-      `<a class="btn primary" href="${esc(ident)}" target="_blank" rel="noopener">Identify these on iNaturalist</a>`);
-    document.getElementById('latent').innerHTML = latent.length
-      ? `<h2>Proposed, not yet confirmed here</h2>` + latent.map(r =>
-        `<div><span><i>${esc(r.taxon.name)}</i>${r.taxon.preferred_common_name ? ' · ' + esc(r.taxon.preferred_common_name) : ''}</span><span class="num">${r.count}</span></div>`).join('')
-      : '<i>No proposed species without a research-grade record here.</i>';
-  } catch (e) {
-    if (selected === c) document.getElementById('latent').innerHTML = `<i>Could not load species from iNaturalist (${esc(e.message)}). Try again in a minute.</i>`;
-  }
+    const p = (await jget(`${API}places/nearby?${b}&per_page=30`)).results;
+    const park = p.community.find(x => /park|reserve|protected|conservancy|ecological/i.test(x.name));
+    const reg = p.standard.filter(x => x.admin_level === 20 && (x.ancestor_place_ids || []).includes(7085)).map(x => x.name.replace(/,.*$/, ''));
+    const name = park ? park.name : reg.length ? reg.join(' / ') : null;
+    if (name) el.querySelector('[data-name]').textContent = name;
+  } catch (e) { /* the coordinates stay as the name */ }
+  const ph = el.querySelector('[data-photos]');
+  if (!ph) return;
+  try {
+    const o = (await jget(`${API}observations?${b}&place_id=7085&quality_grade=needs_id&reviewed=false&photos=true&hrank=species&lrank=species&per_page=6`)).results;
+    ph.innerHTML = o.map(x => `<a href="https://www.inaturalist.org/observations/${x.id}" target="_blank" rel="noopener" title="${esc(x.taxon ? x.taxon.name : '')}">
+      <img loading="lazy" alt="${esc(x.taxon ? (x.taxon.preferred_common_name || x.taxon.name) : 'observation')}" src="${esc(x.photos[0].url)}"></a>`).join('') || '';
+  } catch (e) { ph.remove(); }
+}
+
+const seen = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  seen.unobserve(e.target);
+  fill(e.target, DATA.byKey[e.target.dataset.key]);
+}), {rootMargin: '200px'});
+
+function render() {
+  const cells = tab === 'identify' ? Gaps.identifyFirst(DATA.cells, DATA.cuts, N) : Gaps.recordFirst(DATA.cells, DATA.cuts, N);
+  const list = document.getElementById('list');
+  list.innerHTML = cells.map(card).join('');
+  list.querySelectorAll('.card').forEach(el => seen.observe(el));
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.job === tab)));
+}
+
+function pick(c, fly) {
+  document.querySelectorAll('.card.on').forEach(x => x.classList.remove('on'));
+  let el = document.querySelector(`#list .card[data-key="${c.key}"]`);
+  const picked = document.getElementById('picked');
+  picked.innerHTML = '';
+  if (!el) { picked.innerHTML = card(c); el = picked.firstElementChild; fill(el, c); }
+  el.classList.add('on');
+  el.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  if (fly) map.flyTo({center: [c.lon, c.lat], zoom: 8});
   if (map.getSource('sel')) map.getSource('sel').setData({type: 'Feature', geometry: {type: 'Polygon', coordinates: [[...c.poly, c.poly[0]]]}});
+}
+
+function claim() {
+  const id = DATA.cells.filter(c => Gaps.job(c, DATA.cuts) === 'identify'), rec = DATA.cells.filter(c => Gaps.job(c, DATA.cuts) === 'record');
+  const sp = id.reduce((s, c) => s + c.latent_species, 0), obs = id.reduce((s, c) => s + c.latent_obs, 0);
+  document.getElementById('claim').innerHTML = `<span class="i"><span class="num">${fmt(id.length)}</span> places</span> with a large recording gap already hold photos that would add <span class="num">${fmt(sp)}</span> species to them, in <span class="num">${fmt(obs)}</span> records waiting for an ID. <span class="r"><span class="num">${fmt(rec.length)}</span></span> have almost nothing waiting: those need a visit.`;
+  document.getElementById('n-identify').textContent = `${fmt(id.length)} places, photos waiting`;
+  document.getElementById('n-record').textContent = `${fmt(rec.length)} places, nothing waiting`;
+  document.getElementById('made').textContent = `Data from ${DATA.made}.`;
+}
+
+const COL = ['match', ['get', 'job'], 'identify', '#1f7f95', 'record', '#b44a4a', '#9aa69f'];
+function features() {
+  return {type: 'FeatureCollection', features: DATA.cells.map((c, i) => ({type: 'Feature', properties: {i, job: Gaps.job(c, DATA.cuts) || 'other'},
+    geometry: {type: 'Polygon', coordinates: [[...c.poly, c.poly[0]]]}}))};
 }
 
 async function boot() {
   const r = await fetch('data/cells.json');
-  if (!r.ok) { document.getElementById('claim').innerHTML = '<p>Could not load data/cells.json.</p>'; return; }
+  if (!r.ok) { document.getElementById('claim').textContent = 'Could not load data/cells.json.'; return; }
   DATA = await r.json();
   DATA.cuts = Gaps.cuts(DATA.cells);
-  claim(); legend();
+  // Each cell's rank within BC: the share of BC cells with a smaller recording gap.
+  const gaps = DATA.cells.map(c => c.gap_pct).sort((a, b) => a - b);
+  DATA.cells.forEach(c => { c.bc = Math.round(100 * gaps.findIndex(g => g >= c.gap_pct) / gaps.length); });
+  DATA.byKey = Object.fromEntries(DATA.cells.map(c => [c.key, c]));
+  claim(); render();
   map = new maplibregl.Map({container: 'map', bounds: [[-139.1, 48.2], [-114, 60.1]], fitBoundsOptions: {padding: 20},
     style: {version: 8, sources: {osm: {type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · cells: where-to-blitz · records: iNaturalist'}},
       layers: [{id: 'osm', type: 'raster', source: 'osm', paint: {'raster-saturation': -0.8, 'raster-opacity': 0.9}}]}});
   map.addControl(new maplibregl.NavigationControl({showCompass: false}));
   map.on('load', () => {
-    map.addSource('cells', {type: 'geojson', data: Gaps.geojson(DATA.cells, mode, DATA.cuts)});
-    map.addLayer({id: 'cells', type: 'fill', source: 'cells', paint: {'fill-color': ['get', 'colour'], 'fill-opacity': 0.82}});
+    map.addSource('cells', {type: 'geojson', data: features()});
+    map.addLayer({id: 'cells', type: 'fill', source: 'cells', paint: {'fill-color': COL,
+      'fill-opacity': ['match', ['get', 'job'], 'other', 0.12, 0.72]}});
     map.addSource('sel', {type: 'geojson', data: {type: 'FeatureCollection', features: []}});
     map.addLayer({id: 'sel', type: 'line', source: 'sel', paint: {'line-color': '#111', 'line-width': 2.5}});
-    map.on('click', 'cells', e => select(DATA.cells[e.features[0].properties.i]));
+    map.on('click', 'cells', e => pick(DATA.cells[e.features[0].properties.i], false));
     map.on('mouseenter', 'cells', () => map.getCanvas().style.cursor = 'pointer');
     map.on('mouseleave', 'cells', () => map.getCanvas().style.cursor = '');
   });
-  document.querySelectorAll('.modes button').forEach(b => b.addEventListener('click', () => {
-    mode = b.dataset.mode;
-    document.querySelectorAll('.modes button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    colour();
-  }));
-  document.getElementById('top').addEventListener('click', e => {
-    const b = e.target.closest('button[data-key]');
-    if (!b) return;
-    const c = DATA.cells.find(x => x.key === b.dataset.key);
-    map.flyTo({center: [c.lon, c.lat], zoom: 8});
-    select(c);
+  document.querySelector('.tabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-job]');
+    if (!b || b.dataset.job === tab) return;
+    tab = b.dataset.job; document.getElementById('picked').innerHTML = ''; render();
+  });
+  document.getElementById('panel').addEventListener('click', e => {
+    if (!e.target.closest('[data-fly]')) return;
+    pick(DATA.byKey[e.target.closest('.card').dataset.key], true);
   });
 }
 boot();

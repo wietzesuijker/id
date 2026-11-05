@@ -63,3 +63,17 @@ test('verdict follows both tiers', () => {
   assert.match(G.verdict(cell(50, 70, 30), k), /about as well/);
   assert.match(G.verdict(cell(10, 100, 5), k), /Well recorded/);
 });
+
+test('job splits top-gap cells into identify and record, and the lists agree with it', () => {
+  const k = G.cuts(cells);
+  assert.equal(G.job(cell(99, 2, 8), k), 'identify');
+  assert.equal(G.job(cell(95, 0, 0), k), 'record');
+  assert.equal(G.job(cell(10, 100, 5), k), null);
+  assert.deepEqual(G.recordFirst(cells, k, 5).map(c => c.key), cells.filter(c => G.job(c, k) === 'record').map(c => c.key));
+  assert.ok(G.identifyFirst(cells, k, 5).every(c => G.job(c, k) === 'identify'));
+});
+
+test('area encodes a ring the way what-to-id decodes it', () => {
+  assert.equal(G.area([[0, 0], [0.0001, 0]]), 'AACA');
+  assert.equal(G.area([[-0.0001, 0.0016]]), 'BgB');
+});
