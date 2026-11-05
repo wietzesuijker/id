@@ -32,6 +32,8 @@ test('summary counts top-third cells holding latent species', () => {
   assert.ok(s.top >= 2);
   assert.equal(s.latentObs, 113);
   assert.ok(s.topWithLatentPct > 0 && s.topWithLatentPct <= 100);
+  const top = cells.filter(c => c.gap_pct > k.rec[1]);
+  assert.equal(s.topGainPct, Math.round(100 * top.reduce((a, c) => a + c.latent_species, 0) / top.reduce((a, c) => a + c.rg_species, 0)));
 });
 
 test('identifyFirst ranks top-gap cells by latent species and skips empty ones', () => {
@@ -43,10 +45,21 @@ test('identifyFirst ranks top-gap cells by latent species and skips empty ones',
 
 test('empty input does not throw', () => {
   const k = G.cuts([]);
-  assert.deepEqual(G.summary([], k), {n: 0, top: 0, topWithLatentPct: 0, medianGainPct: 0, latentObs: 0});
+  assert.deepEqual(G.summary([], k), {n: 0, top: 0, topWithLatentPct: 0, medianGainPct: 0, topGainPct: 0, latentObs: 0});
 });
 
 test('ramp colours are valid hex across the range', () => {
   const k = G.cuts(cells);
   for (const c of cells) for (const m of ['record', 'identify', 'verdict']) assert.match(G.colour(c, m, k), /^#[0-9a-f]{6}$/);
+});
+
+test('verdict follows both tiers', () => {
+  const k = {rec: [33, 66], idf: [0.2, 0.4]};
+  assert.match(G.verdict(cell(90, 0, 0), k), /No species records/);
+  assert.match(G.verdict(cell(90, 10, 40), k), /Both gaps/);
+  assert.match(G.verdict(cell(10, 10, 40), k), /already photographed/);
+  assert.match(G.verdict(cell(90, 100, 5), k), /Few records wait/);
+  assert.match(G.verdict(cell(90, 70, 30), k), /some records also wait/);
+  assert.match(G.verdict(cell(50, 70, 30), k), /about as well/);
+  assert.match(G.verdict(cell(10, 100, 5), k), /Well recorded/);
 });

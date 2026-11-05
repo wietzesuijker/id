@@ -127,8 +127,8 @@ function colour() {
 function claim() {
   const s = Gaps.summary(DATA.cells, DATA.cuts);
   document.getElementById('claim').innerHTML = `
-    <strong><span class="num">${s.topWithLatentPct}%</span> of the cells with BC's largest recording gaps already hold species proposed only in the Needs ID queue.</strong>
-    <p class="lede">In the median such cell, identifying those records would add <b class="num">${s.medianGainPct}%</b> to the species with a research-grade record. Over all <span class="num">${fmt(s.n)}</span> cells, <span class="num">${fmt(s.latentObs)}</span> Needs ID records name a species not yet confirmed in their cell.</p>`;
+    <strong>In BC's largest recording gaps, identifying the records already waiting would add <span class="num">${s.topGainPct}%</span> more species to the cells than are confirmed there now.</strong>
+    <p class="lede">That is the top third of the <span class="num">${fmt(s.n)}</span> cells by recording gap. <span class="num">${s.topWithLatentPct}%</span> of them hold at least one species proposed only in Needs ID; in the median one with any confirmed species, the gain is <b class="num">${s.medianGainPct}%</b>. Across BC, <span class="num">${fmt(s.latentObs)}</span> Needs ID records name a species not yet confirmed in their cell.</p>`;
   document.getElementById('made').textContent = `Data from ${DATA.made}.`;
   document.getElementById('top').innerHTML = Gaps.identifyFirst(DATA.cells, DATA.cuts, 8).map(c =>
     `<button type="button" data-key="${c.key}"><span>${c.lat.toFixed(2)}°N ${(-c.lon).toFixed(2)}°W · gap <span class="num">${Math.round(c.gap_pct)}</span></span><span class="num">+${fmt(c.latent_species)} spp.</span></button>`).join('');

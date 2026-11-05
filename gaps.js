@@ -61,6 +61,8 @@
       top: top.length,
       topWithLatentPct: top.length ? Math.round(100 * top.filter(c => c.latent_species > 0).length / top.length) : 0,
       medianGainPct: withRg.length ? Math.round(100 * median(withRg.map(c => c.latent_species / c.rg_species))) : 0,
+      // Pooled over cells: species-in-cell records that identifying would add, against those confirmed now.
+      topGainPct: Math.round(100 * top.reduce((s, c) => s + c.latent_species, 0) / Math.max(1, top.reduce((s, c) => s + c.rg_species, 0))),
       latentObs: cells.reduce((s, c) => s + c.latent_obs, 0),
     };
   }
@@ -77,7 +79,9 @@
     const r = tier(c.gap_pct, k.rec), i = tier(s, k.idf);
     if (i === 2 && r === 2) return 'Both gaps are large. Identify the waiting records first, then a visit can target what is still missing.';
     if (i === 2) return 'Much of what is unknown here is already photographed. Identifying is the fastest way to fill it.';
-    if (r === 2) return 'Few records wait for an ID. New observations are what this cell needs.';
+    if (r === 2) return i === 0 ? 'Few records wait for an ID. New observations are what this cell needs.'
+      : 'New observations add the most here, and some records also wait for an ID.';
+    if (i === 1) return 'Recorded about as well as the rest of BC, with some records waiting for an ID.';
     return 'Well recorded compared with the rest of BC.';
   }
 
