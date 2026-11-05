@@ -72,8 +72,3 @@ test('job splits top-gap cells into identify and record, and the lists agree wit
   assert.deepEqual(G.recordFirst(cells, k, 5).map(c => c.key), cells.filter(c => G.job(c, k) === 'record').map(c => c.key));
   assert.ok(G.identifyFirst(cells, k, 5).every(c => G.job(c, k) === 'identify'));
 });
-
-test('area encodes a ring the way what-to-id decodes it', () => {
-  assert.equal(G.area([[0, 0], [0.0001, 0]]), 'AACA');
-  assert.equal(G.area([[-0.0001, 0.0016]]), 'BgB');
-});

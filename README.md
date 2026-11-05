@@ -11,7 +11,7 @@ It joins two Blitz the Gap tools. [where-to-blitz](https://pollocklab.github.io/
 - **Recording gap**: the where-to-blitz Spatial Gap score of the cell, as a percentile across Canada.
 - **Identification gap**: species that Needs ID records in the cell propose at species level, with no research-grade record of that species in the cell. These are *latent* species. The page shows them as a share of all species known in the cell.
 
-The page takes BC's third of cells with the largest recording gap and sorts them into two lists. **Identify from your desk**: cells where latent species are a large share, ranked by latent species, each with waiting photos fetched live and a link that opens what-to-id filtered to exactly that cell (its `area=` hash). **Go and record**: cells where little or nothing waits, ranked by recording gap, each with a link to plan a trip in where-to-blitz. The map only locates the two lists.
+The page is one feed of waiting photos, like what-to-id. It takes BC's third of cells with the largest recording gap, keeps those where latent species are a large share, and ranks them by latent species. For each place it fetches live one Needs ID photo per latent species, and each photo opens its iNaturalist record. A small map beside the feed shows the same cells: blue where photos wait, red where little or nothing waits and only a visit helps. Clicking a cell shows only that place; a red cell shows a link to plan a trip in where-to-blitz.
 
 ## Why it matters
 
