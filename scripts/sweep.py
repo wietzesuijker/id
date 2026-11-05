@@ -44,7 +44,7 @@ def get(url):
             wait = _next[0] - time.monotonic()
             if wait > 0:
                 time.sleep(wait)
-            _next[0] = time.monotonic() + 1.0
+            _next[0] = time.monotonic() + 1.2
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "id-sweep (github.com/wietzesuijker/id)"})
             with urllib.request.urlopen(req, timeout=60) as r:
@@ -154,7 +154,7 @@ def main():
             f.flush()
             print(f"{len(done)}/{len(cells)} {row}", file=sys.stderr)
 
-    with cache.open("a") as f, ThreadPoolExecutor(3) as pool:
+    with cache.open("a") as f, ThreadPoolExecutor(2) as pool:
         list(pool.map(run, todo))
     out = [{**c, **{k: v for k, v in done[c["key"]].items() if k != "key"}} for c in cells]
     (ROOT / "data" / "cells.json").write_text(json.dumps(
